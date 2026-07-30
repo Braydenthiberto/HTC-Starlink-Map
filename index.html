@@ -13,13 +13,13 @@
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;background:var(--bg)}
   #map{position:absolute;inset:0;background:var(--bg)}
-  .statusbar{position:absolute;top:16px;left:16px;right:16px;z-index:1000;display:flex;gap:14px;
+  .statusbar{position:absolute;top:10px;left:10px;right:10px;z-index:1000;display:flex;gap:10px;
     align-items:stretch;flex-wrap:wrap;background:var(--panel);backdrop-filter:blur(18px) saturate(160%);
     -webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid var(--panel-brd);
-    border-radius:18px;box-shadow:var(--shadow);padding:14px 18px;color:var(--txt);}
-  .sb-brand{display:flex;flex-direction:column;justify-content:center;min-width:220px}
-  .sb-brand .kicker{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
-  .sb-brand h1{margin:2px 0 0;font-size:19px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+    border-radius:12px;box-shadow:var(--shadow);padding:8px 12px;color:var(--txt);}
+  .sb-brand{display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .sb-brand .kicker{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .sb-brand h1{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
   .sb-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(34,197,94,.18)}
   .sb-brand .sub{font-size:12px;color:var(--muted);margin-top:3px}
   .sb-div{width:1px;background:linear-gradient(transparent,var(--panel-brd),transparent);align-self:stretch}
@@ -28,9 +28,9 @@
   .stat .v{font-size:20px;font-weight:700;letter-spacing:-.02em}
   .stat .l{font-size:11px;color:var(--muted);margin-top:5px}
   .stat.green .v{color:var(--green)} .stat.yellow .v{color:var(--yellow)} .stat.red .v{color:var(--red)}
-  .sb-legend{display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:200px;margin-left:auto}
+  .sb-legend{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:140px;margin-left:auto}
   .legend-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
-  .ramp{height:12px;border-radius:7px;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#f59e0b 50%,#a3c93a 72%,#22c55e 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .ramp{height:8px;border-radius:7px;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#f59e0b 50%,#a3c93a 72%,#22c55e 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
   .legend-cap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:1px}
   .leaflet-popup-content-wrapper{background:var(--panel);color:var(--txt);border:1px solid var(--panel-brd);border-radius:14px;backdrop-filter:blur(16px);box-shadow:var(--shadow)}
   .leaflet-popup-tip{background:var(--panel)}
@@ -40,7 +40,7 @@
   .attrib{position:absolute;bottom:8px;left:10px;z-index:1000;font-size:10px;color:rgba(255,255,255,.55)}
   @media (max-width:760px){.sb-legend{margin-left:0}.sb-brand{min-width:0}}
 
-  .mtool{position:absolute;left:10px;bottom:34px;z-index:1200;display:flex;flex-direction:column;gap:8px;max-width:min(78vw,320px)}
+  .mtool{position:absolute;left:10px;bottom:12px;z-index:1200;display:flex;flex-direction:column;gap:8px;width:min(74vw,300px)}
   .mt-btn{cursor:pointer;border:0;border-radius:12px;font:800 15px/1.1 -apple-system,system-ui,sans-serif;
     padding:13px 16px;box-shadow:var(--shadow);-webkit-tap-highlight-color:transparent}
   .mt-primary{background:#22c55e;color:#06210f}
@@ -62,6 +62,8 @@
   .mt-nav{flex:1;margin-top:0;text-align:center;color:#fff;text-decoration:none;border-radius:10px;padding:11px 8px;font-weight:800}
   .mt-apple{background:#111}
   .mt-google{background:#3b82f6}
+  .mt-loc{width:46px;height:46px;border-radius:50%;border:1px solid var(--panel-brd);background:var(--panel);color:var(--txt);box-shadow:var(--shadow);font-size:22px;line-height:1;cursor:pointer;backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center}
+  .mt-loc.on{background:#1a73e8;color:#fff;border-color:#1a73e8}
 </style>
 </head>
 <body>
@@ -70,15 +72,6 @@
   <div class="sb-brand">
     <div class="kicker">HTC Starlink · Hood To Coast</div>
     <h1><span class="dot"></span>Full Course — Coverage</h1>
-    <div class="sub">Scappoose &rarr; coast · roof-mounted Starlink Mini</div>
-  </div>
-  <div class="sb-div"></div>
-  <div class="sb-stats">
-    <div class="stat green"><div class="v" id="s-call">--</div><div class="l">Call-ready</div></div>
-    <div class="stat yellow"><div class="v" id="s-text">--</div><div class="l">Text-reliable</div></div>
-    <div class="stat red"><div class="v" id="s-none">--</div><div class="l">Text-unreliable</div></div>
-    <div class="stat"><div class="v" id="s-dist">--</div><div class="l">Miles logged</div></div>
-    <div class="stat"><div class="v" id="s-dur">--</div><div class="l">Duration</div></div>
   </div>
   <div class="sb-legend">
     <div class="legend-row"><span>Connectivity reliability</span></div>
@@ -134,13 +127,13 @@ map.fitBounds(L.polyline(latlngs).getBounds().pad(0.08));
 
 const s_call=document.getElementById('s-call'),s_text=document.getElementById('s-text'),s_none=document.getElementById('s-none'),s_dist=document.getElementById('s-dist'),s_dur=document.getElementById('s-dur');
 let nc=0,nt=0,nn=0;PTS.forEach(p=>{if(p.s>=0.66)nc++;else if(p.s>=0.33)nt++;else nn++;});
-s_call.textContent=nc;s_text.textContent=nt;s_none.textContent=nn;
+if(s_call){s_call.textContent=nc;s_text.textContent=nt;s_none.textContent=nn;}
 function hav(a,b){const R=3958.8,tr=Math.PI/180,dLat=(b[0]-a[0])*tr,dLon=(b[1]-a[1])*tr;const x=Math.sin(dLat/2)**2+Math.cos(a[0]*tr)*Math.cos(b[0]*tr)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
 let dist=0;for(let i=0;i<latlngs.length-1;i++){const d=hav(latlngs[i],latlngs[i+1]);if(d<=GAP)dist+=d;}
-s_dist.textContent=dist.toFixed(1);
+if(s_dist)s_dist.textContent=dist.toFixed(1);
 function toSec(t){const[h,m,s]=t.split(':').map(Number);return h*3600+m*60+s;}
 let dur=toSec(PTS[PTS.length-1].t)-toSec(PTS[0].t);if(dur<0)dur+=86400;
-const hh=Math.floor(dur/3600),mm=Math.round((dur%3600)/60);s_dur.textContent=hh+'h '+mm+'m';
+const hh=Math.floor(dur/3600),mm=Math.round((dur%3600)/60);if(s_dur)s_dur.textContent=hh+'h '+mm+'m';
 
 
 // ===== Mobile: directions to nearest reliable service (GPS) + offline map tiles =====
@@ -243,6 +236,29 @@ document.getElementById('mt-dl').onclick=async function(){
   await Promise.all(Array.from({length:6},work));
   btn.disabled=false;out.textContent='✅ Saved '+(done-failed)+' tiles offline'+(failed?' ('+failed+' failed — retry on better Wi-Fi)':'')+'.';
 };
+
+// Live location pin (Google-Maps style): tap to follow your position
+let _lwatch=null,_ldot=null,_lacc=null;
+const _locBtn=L.control({position:'bottomright'});
+_locBtn.onAdd=function(){
+  const b=L.DomUtil.create('button','mt-loc');b.innerHTML='◎';b.title='Show my location';
+  L.DomEvent.disableClickPropagation(b);L.DomEvent.disableScrollPropagation(b);
+  b.onclick=function(){
+    if(_lwatch!==null){navigator.geolocation.clearWatch(_lwatch);_lwatch=null;b.classList.remove('on');
+      if(_ldot){map.removeLayer(_ldot);_ldot=null;}if(_lacc){map.removeLayer(_lacc);_lacc=null;}return;}
+    if(!navigator.geolocation){alert('GPS is not available in this browser.');return;}
+    b.classList.add('on');let first=true;
+    _lwatch=navigator.geolocation.watchPosition(function(pos){
+      const me=[pos.coords.latitude,pos.coords.longitude],acc=pos.coords.accuracy;
+      if(_lacc)_lacc.setLatLng(me).setRadius(Math.min(acc||0,600));else _lacc=L.circle(me,{radius:Math.min(acc||30,600),color:'#1a73e8',weight:1,fillColor:'#1a73e8',fillOpacity:0.12}).addTo(map);
+      if(_ldot)_ldot.setLatLng(me);else _ldot=L.circleMarker(me,{renderer:canvas,radius:8,color:'#fff',weight:3,fillColor:'#1a73e8',fillOpacity:1}).addTo(map);
+      if(first){map.setView(me,15);first=false;}
+    },function(err){b.classList.remove('on');_lwatch=null;alert('Location error: '+err.message+'\n(GPS needs HTTPS + permission.)');},
+    {enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+  };
+  return b;
+};
+_locBtn.addTo(map);
 
 // Service worker: serves tiles from cache when offline
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}
