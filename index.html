@@ -55,6 +55,13 @@
     border-radius:10px;padding:9px 14px;font-weight:800}
   .mt-dlout{font:600 11px/1.3 -apple-system,sans-serif;color:var(--muted);padding:0 2px;display:none}
   .mt-dlout.show{display:block}
+  .mt-seg{display:flex;gap:4px;background:var(--panel);border:1px solid var(--panel-brd);border-radius:12px;padding:4px;backdrop-filter:blur(16px);box-shadow:var(--shadow)}
+  .mt-s{flex:1;cursor:pointer;border:0;background:transparent;color:var(--muted);border-radius:9px;padding:9px 4px;font:700 12px -apple-system,system-ui,sans-serif}
+  .mt-s-on{background:#22c55e;color:#06210f}
+  .mt-navs{display:flex;gap:8px;margin-top:8px}
+  .mt-nav{flex:1;margin-top:0;text-align:center;color:#fff;text-decoration:none;border-radius:10px;padding:11px 8px;font-weight:800}
+  .mt-apple{background:#111}
+  .mt-google{background:#3b82f6}
 </style>
 </head>
 <body>
@@ -136,16 +143,20 @@ let dur=toSec(PTS[PTS.length-1].t)-toSec(PTS[0].t);if(dur<0)dur+=86400;
 const hh=Math.floor(dur/3600),mm=Math.round((dur%3600)/60);s_dur.textContent=hh+'h '+mm+'m';
 
 
-// ===== Mobile: nearest call-ready spot (GPS) + offline map tiles =====
-const CALL_PTS = PTS.filter(p=>p.s>=0.66);
-const _p=document.createElement('div');_p.className='mtool';
-_p.innerHTML='<button id="mt-find" class="mt-btn mt-primary">📞 Nearest call spot</button>'
-  +'<button id="mt-track" class="mt-btn mt-ghost">📍 Track my location</button>'
-  +'<div id="mt-out" class="mt-out"></div>'
-  +'<button id="mt-dl" class="mt-btn mt-ghost">⤓ Save map for offline (~38 MB)</button>'
-  +'<div id="mt-dlout" class="mt-dlout"></div>';
-document.body.appendChild(_p);
-L.DomEvent.disableClickPropagation(_p);
+// ===== Mobile: directions to nearest reliable service (GPS) + offline map tiles =====
+// STRICT good service = sustained call-ready (filters momentary satellite-handoff blips)
+const _GAPmi=0.3, _MINRUN=20;
+const _cum=new Array(PTS.length).fill(0);
+for(let k=1;k<PTS.length;k++){let d=hav([PTS[k-1].lat,PTS[k-1].lon],[PTS[k].lat,PTS[k].lon]);if(d>_GAPmi)d=0;_cum[k]=_cum[k-1]+d;}
+const _good=new Array(PTS.length).fill(false);
+for(let k=0;k<PTS.length;){
+  if(PTS[k].s<0.66){k++;continue;}
+  let e=k+1;
+  while(e<PTS.length && PTS[e].s>=0.66 && hav([PTS[e-1].lat,PTS[e-1].lon],[PTS[e].lat,PTS[e].lon])<=_GAPmi) e++;
+  if(e-k>=_MINRUN) for(let m=k;m<e;m++) _good[m]=true;
+  k=e;
+}
+const _goodIdx=[]; for(let k=0;k<PTS.length;k++) if(_good[k]) _goodIdx.push(k);
 
 function _bearing(a,b){
   const y=Math.sin((b[1]-a[1])*Math.PI/180)*Math.cos(b[0]*Math.PI/180);
@@ -153,46 +164,62 @@ function _bearing(a,b){
   let d=(Math.atan2(y,x)*180/Math.PI+360)%360;
   return ['N','NE','E','SE','S','SW','W','NW'][Math.round(d/45)%8];
 }
+
+const _p=document.createElement('div');_p.className='mtool';
+_p.innerHTML='<div class="mt-seg" id="mt-dir">'
+    +'<button data-d="up" class="mt-s">⬆ Up-course</button>'
+    +'<button data-d="closest" class="mt-s mt-s-on">⌖ Closest</button>'
+    +'<button data-d="down" class="mt-s">⬇ Down-course</button>'
+  +'</div>'
+  +'<button id="mt-go" class="mt-btn mt-primary">\U0001F9ED Directions to nearest service</button>'
+  +'<div id="mt-out" class="mt-out"></div>'
+  +'<button id="mt-dl" class="mt-btn mt-ghost">⤓ Save map for offline (~38 MB)</button>'
+  +'<div id="mt-dlout" class="mt-dlout"></div>';
+document.body.appendChild(_p);
+L.DomEvent.disableClickPropagation(_p);
+
+let _dir='closest';
+document.getElementById('mt-dir').addEventListener('click',function(e){
+  const b=e.target.closest('button[data-d]');if(!b)return;
+  _dir=b.getAttribute('data-d');
+  this.querySelectorAll('button').forEach(x=>x.classList.toggle('mt-s-on',x===b));
+});
+
 let _me=null,_tgt=null,_ln=null;
-let _live=null,_acc=null,_watch=null;
-function _updateLive(me,accM){
-  if(_live)_live.setLatLng(me);else _live=L.circleMarker(me,{renderer:canvas,radius:7,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map);
-  if(accM){const rM=Math.min(accM,300);if(_acc)_acc.setLatLng(me).setRadius(rM);else _acc=L.circle(me,{radius:rM,color:'#3b82f6',weight:1,fillColor:'#3b82f6',fillOpacity:0.12}).addTo(map);}
-}
-function _showNearest(me,fit){
-  const out=document.getElementById('mt-out');out.className='mt-out show';
-  let best=1e9,bp=null;
-  for(const p of CALL_PTS){const d=hav(me,[p.lat,p.lon]);if(d<best){best=d;bp=p;}}
-  if(!bp){out.textContent='No call-ready spots found in the data.';return;}
-  const brg=_bearing(me,[bp.lat,bp.lon]);
-  if(_tgt)_tgt.setLatLng([bp.lat,bp.lon]);else _tgt=L.circleMarker([bp.lat,bp.lon],{renderer:canvas,radius:9,color:'#fff',weight:3,fillColor:'#22c55e',fillOpacity:1}).addTo(map);
-  if(_ln)_ln.setLatLngs([me,[bp.lat,bp.lon]]);else _ln=L.polyline([me,[bp.lat,bp.lon]],{renderer:canvas,color:'#22c55e',weight:3,dashArray:'7,7'}).addTo(map);
-  if(fit)map.fitBounds(L.latLngBounds([me,[bp.lat,bp.lon]]).pad(0.35));
-  const url='https://www.google.com/maps/dir/?api=1&destination='+bp.lat+','+bp.lon+'&travelmode=driving';
-  out.innerHTML='<b>'+best.toFixed(1)+' mi '+brg+'</b> to the nearest call-ready spot'
-    +'<br><a class="mt-nav" href="'+url+'" target="_blank" rel="noopener">Navigate ▸</a>';
-}
-document.getElementById('mt-find').onclick=function(){
+document.getElementById('mt-go').onclick=function(){
   const btn=this,out=document.getElementById('mt-out');out.className='mt-out show';
   if(!navigator.geolocation){out.textContent='GPS is not available in this browser.';return;}
+  if(!_goodIdx.length){out.textContent='No reliable-service zones in the data.';return;}
   out.textContent='Locating…';btn.disabled=true;
   navigator.geolocation.getCurrentPosition(function(pos){
-    btn.disabled=false;const me=[pos.coords.latitude,pos.coords.longitude];
-    _updateLive(me,pos.coords.accuracy);_showNearest(me,true);
+    btn.disabled=false;
+    const me=[pos.coords.latitude,pos.coords.longitude];
+    let ci=0,cbest=1e9;
+    for(let k=0;k<PTS.length;k++){const d=hav(me,[PTS[k].lat,PTS[k].lon]);if(d<cbest){cbest=d;ci=k;}}
+    function down(){let best=1e18,bi=-1;for(const k of _goodIdx){if(k<=ci)continue;const d=_cum[k]-_cum[ci];if(d<best){best=d;bi=k;}}return[bi,best];}
+    function up(){let best=1e18,bi=-1;for(const k of _goodIdx){if(k>=ci)continue;const d=_cum[ci]-_cum[k];if(d<best){best=d;bi=k;}}return[bi,best];}
+    let bi=-1,dist=0,lbl='';
+    if(_dir==='down'){const r=down();bi=r[0];dist=r[1];lbl='down-course';}
+    else if(_dir==='up'){const r=up();bi=r[0];dist=r[1];lbl='up-course';}
+    else{const d=down(),u=up();
+      if(d[0]<0&&u[0]<0){bi=-1;}
+      else if(u[0]<0||(d[0]>=0&&d[1]<=u[1])){bi=d[0];dist=d[1];lbl='down-course';}
+      else{bi=u[0];dist=u[1];lbl='up-course';}
+    }
+    if(bi<0){out.textContent='No reliable service found '+(_dir==='closest'?'nearby':_dir+'-course')+' along the recorded route.';return;}
+    const tp=PTS[bi];
+    if(_me)_me.setLatLng(me);else _me=L.circleMarker(me,{renderer:canvas,radius:8,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map);
+    if(_tgt)_tgt.setLatLng([tp.lat,tp.lon]);else _tgt=L.circleMarker([tp.lat,tp.lon],{renderer:canvas,radius:9,color:'#fff',weight:3,fillColor:'#22c55e',fillOpacity:1}).addTo(map);
+    if(_ln)_ln.setLatLngs([me,[tp.lat,tp.lon]]);else _ln=L.polyline([me,[tp.lat,tp.lon]],{renderer:canvas,color:'#22c55e',weight:3,dashArray:'7,7'}).addTo(map);
+    map.fitBounds(L.latLngBounds([me,[tp.lat,tp.lon]]).pad(0.35));
+    const brg=_bearing(me,[tp.lat,tp.lon]);
+    const g='https://www.google.com/maps/dir/?api=1&origin='+me[0]+','+me[1]+'&destination='+tp.lat+','+tp.lon+'&travelmode=driving';
+    const a='https://maps.apple.com/?saddr='+me[0]+','+me[1]+'&daddr='+tp.lat+','+tp.lon+'&dirflg=d';
+    out.innerHTML='<b>~'+dist.toFixed(1)+' mi '+lbl+'</b> to reliable service ('+brg+')'
+      +'<div class="mt-navs"><a class="mt-nav mt-apple" href="'+a+'">Apple Maps</a>'
+      +'<a class="mt-nav mt-google" href="'+g+'">Google Maps</a></div>';
   },function(err){btn.disabled=false;out.textContent='Location error: '+err.message+'. GPS needs HTTPS + permission.';},
   {enableHighAccuracy:true,timeout:12000,maximumAge:0});
-};
-document.getElementById('mt-track').onclick=function(){
-  const btn=this,out=document.getElementById('mt-out');
-  if(_watch!==null){navigator.geolocation.clearWatch(_watch);_watch=null;btn.textContent='\U0001F4CD Track my location';btn.classList.remove('mt-on');return;}
-  if(!navigator.geolocation){out.className='mt-out show';out.textContent='GPS is not available in this browser.';return;}
-  let first=true;btn.textContent='⏹ Stop tracking';btn.classList.add('mt-on');
-  _watch=navigator.geolocation.watchPosition(function(pos){
-    const me=[pos.coords.latitude,pos.coords.longitude];
-    _updateLive(me,pos.coords.accuracy);_showNearest(me,false);
-    if(first){map.setView(me,14);first=false;}
-  },function(err){out.className='mt-out show';out.textContent='Location error: '+err.message+'.';btn.textContent='\U0001F4CD Track my location';btn.classList.remove('mt-on');_watch=null;},
-  {enableHighAccuracy:true,timeout:15000,maximumAge:1000});
 };
 
 // Offline tile download
