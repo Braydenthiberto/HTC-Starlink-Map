@@ -5,11 +5,11 @@ const FONT_CACHE  = 'htc-fonts-v1';
 
 const SHELL = [
   './', 'index.html', 'manifest.json',
-  'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'
+  'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'htc-logo.png'
 ];
 
 const TILE_HOST = 'server.arcgisonline.com';
-const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'hoodtocoast.com'];
+const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
